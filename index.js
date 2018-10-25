@@ -51,8 +51,8 @@ function onInit() {
 				const now = new Date();
 				let newDocs = [];
 				let date;
-				if (docs.length === 0 || (new Date(docs[0].timestamp_tdt) < new Date((new Date()).setHours(now.getHours() - 12)))) {
-					const someTimeAgo = new Date((new Date()).setHours(now.getHours() - 72));
+				if (docs.length === 0 || (new Date(docs[0].timestamp_tdt) < new Date((new Date()).setHours(now.getHours() - 1)))) {
+					const someTimeAgo = new Date((new Date()).setHours(now.getHours() - 1));
 					console.log('someTimeAgo: ' + someTimeAgo.toISOString());
 					date = new Date(someTimeAgo);
 				} else {
@@ -76,8 +76,17 @@ function onInit() {
 					const host = getHostRecord(id, date.toISOString(), 'history', newCpuUsage, newCpuUtilization);
 					newDocs.push(host);
 
+
+					SERVICE_NAMES.forEach((serviceName) => {
+						let status = 'RUNNING';
+						const serviceRecord = getServiceRecord(serviceName, status, id, date.toISOString(), 'history');
+						delete serviceRecord.id;
+						newDocs.push(serviceRecord);
+					});
+
+
 					if (counter % 20 === 0) {
-						console.log(host.node_s + '-' + host.timestamp_tdt);
+						// console.log(host.node_s + '-' + host.timestamp_tdt);
 					}
 					date.setSeconds(date.getSeconds() + 30);
 				}
@@ -91,7 +100,7 @@ function onInit() {
 
 	fakeHostIds.forEach((hostId, index) => {
 		SERVICE_NAMES.forEach((serviceName) => {
-			status = index % 3 === 0 ? 'RUNNING' : index % 3 === 1 ? 'RESTARTING' : 'FAILED';
+			let status = index % 3 === 0 ? 'RUNNING' : index % 3 === 1 ? 'RESTARTING' : 'FAILED';
 			if (_.random(100) < 70) {
 				const nowIso = (new Date()).toISOString();
 				const serviceRecord = getServiceRecord(serviceName, status, hostId, nowIso);
@@ -113,9 +122,8 @@ function updateMetric(record) {
 		url: METRICS_UPDATE_URI,
 		data
 	}).then((response) => {
-		console.log('Latest record inserted');
+		console.log('Record inserted');
 		console.log('================');
-		console.log(response);
 		return response;
 	}).catch((error) => {
 		console.log(error);
@@ -159,8 +167,9 @@ function getHostRecord(nodeId, timestampIso, metricType, cpuLoad = 15.6821289062
 	};
 }
 
-function getServiceRecord(serviceName, status, nodeId, timestampIso) {
-	return {
+let currentIndexSize = 549869443;
+function getServiceRecord(serviceName, status, nodeId, timestampIso, type_s = 'latest') {
+	const record = {
 		"jetty_version_s": "9.3.8.v20160314",
 		"solr_query_rate_l": 0,
 		"solr_total_time_l": 5038303658,
@@ -170,7 +179,7 @@ function getServiceRecord(serviceName, status, nodeId, timestampIso) {
 		"jetty_queue_size_i": 0,
 		"java_jvm_version_s": "1.8",
 		"jetty_responses_5xx_l": 0,
-		"type_s": "latest",
+		type_s,
 		"java_heap_max_l": 2058027008,
 		"java_loaded_classes_i": 9764,
 		"solr_requests_l": 5599,
@@ -207,6 +216,14 @@ function getServiceRecord(serviceName, status, nodeId, timestampIso) {
 		"solr_index_size_l": 258754140,
 		"address_s": "10.0.0.43"
 	};
+	if (serviceName === 'api') {
+		record.api_query_pipelines_http_95th_percentile_f = _.random(500, 700, true);
+		record.api_query_pipelines_http_one_minute_rate_f = _.random(0, 1000);
+		record.api_index_pipelines_doc_one_minute_rate_f = _.random(0, 100);
+	} else if (serviceName === 'solr') {
+		currentIndexSize = record.solr_index_size_l = _.random(currentIndexSize - 1000, currentIndexSize + 10000);
+	}
+	return record;
 }
 
 
