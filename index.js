@@ -8,6 +8,14 @@ const METRICS_UPDATE_URI = 'http://localhost:8983/solr/system_metrics/update?com
 // curl -X POST "http://localhost:8983/solr/system_metrics/update?commit=true" -H "Content-Type: application/json" --data-binary '{"delete": {"query":"type_s:latest"}}'
 
 const fakeHostIds = ['55555555-4778-4ed3-b6fd-09d525e51234', '12345678-4778-4ed3-b6fd-09d525e55678', '77777777-4778-4ed3-b6fd-09d525e59876'];
+function getHostName(hostId) {
+	const hostIdToNameMap = {
+		'55555555-4778-4ed3-b6fd-09d525e51234': 'Apple',
+		'12345678-4778-4ed3-b6fd-09d525e55678': 'Banana',
+		'77777777-4778-4ed3-b6fd-09d525e59876': 'Kiwi'
+	};
+	return hostIdToNameMap[hostId];
+}
 
 const LATEST_ROWS_URI = `${METRICS_QUERY_URI}?q=type_s:latest&rows=200&sort=timestamp_tdt%20desc`
 const LATEST_HOSTS_URI = `${METRICS_QUERY_URI}?q=type_s:latest&fq=view_s:(host)&rows=200&sort=timestamp_tdt%20desc`
@@ -31,6 +39,7 @@ function onInit() {
 				console.log(existingHost);
 				delete existingHost['_version_'];
 				existingHost.timestamp_tdt = nowUtc;
+				existingHost.hostname_s = getHostName(existingHost.node_s);
 				updateMetric(existingHost);
 
 			} else {
@@ -162,12 +171,14 @@ function getHostRecord(nodeId, timestampIso, metricType, cpuLoad = 15.6821289062
 		"virtual_memory_committed_l": 6282428416,
 		"timestamp_tdt": timestampIso, // e.g."2018-09-25T00:34:41.110Z",
 		"node_s": nodeId,
+		"hostname_s": getHostName(nodeId),
 		"swap_free_l": 489422848,
 		"disk_total_l": 499963170816
 	};
 }
 
 let currentIndexSize = 549869443;
+let currentProxySessions = _.random(0, 10);
 function getServiceRecord(serviceName, status, nodeId, timestampIso, type_s = 'latest') {
 	const record = {
 		"jetty_version_s": "9.3.8.v20160314",
@@ -199,6 +210,7 @@ function getServiceRecord(serviceName, status, nodeId, timestampIso, type_s = 'l
 		"timestamp_tdt": timestampIso,
 		"node_service_s": `${nodeId}_${serviceName}`,
 		"node_s": nodeId,
+		"hostname_s": getHostName(nodeId),
 		"jetty_requests_l": 175,
 		"jetty_messages_out_l": 44,
 		"pid_i": 5449,
@@ -217,11 +229,13 @@ function getServiceRecord(serviceName, status, nodeId, timestampIso, type_s = 'l
 		"address_s": "10.0.0.43"
 	};
 	if (serviceName === 'api') {
-		record.api_query_pipelines_http_95th_percentile_f = _.random(500, 700, true);
-		record.api_query_pipelines_http_one_minute_rate_f = _.random(0, 1000);
-		record.api_index_pipelines_doc_one_minute_rate_f = _.random(0, 100);
+		record.api_query_pipelines_http_95th_percentile_f = _.random(0, 50, true);
+		record.api_query_pipelines_http_one_minute_rate_f = _.random(0, 40);
+		record.api_index_pipelines_doc_one_minute_rate_f = _.random(0, 60);
 	} else if (serviceName === 'solr') {
-		currentIndexSize = record.solr_index_size_l = _.random(currentIndexSize - 1000, currentIndexSize + 10000);
+		currentIndexSize = record.solr_index_size_l = _.random(0, 10) < 8 ? currentIndexSize : _.random(currentIndexSize - 1000, currentIndexSize + 10000);
+	} else if (serviceName === 'proxy') {
+		currentProxySessions = record.proxy_sessions_rate_count_l = _.random(0, 10) < 8 ? currentProxySessions : _.random(currentProxySessions - 3, currentIndexSize + 3);
 	}
 	return record;
 }
