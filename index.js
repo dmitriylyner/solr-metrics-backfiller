@@ -1,11 +1,11 @@
 const axios = require('axios');
 const _ = require('lodash');
 
-const METRICS_QUERY_URI = 'http://localhost:8983/solr/system_metrics/query';
-const METRICS_UPDATE_URI = 'http://localhost:8983/solr/system_metrics/update?commitWithin=1000&overwrite=true&wt=json';
+const METRICS_QUERY_URI = 'http://localhost:8983/solr/system_monitor/query';
+const METRICS_UPDATE_URI = 'http://localhost:8983/solr/system_monitor/update?commitWithin=1000&overwrite=true&wt=json';
 
 // Delete by query
-// curl -X POST "http://localhost:8983/solr/system_metrics/update?commit=true" -H "Content-Type: application/json" --data-binary '{"delete": {"query":"type_s:latest"}}'
+// curl -X POST "http://localhost:8983/solr/system_monitor/update?commit=true" -H "Content-Type: application/json" --data-binary '{"delete": {"query":"type_s:latest"}}'
 
 const fakeHostIds = ['55555555-4778-4ed3-b6fd-09d525e51234', '12345678-4778-4ed3-b6fd-09d525e55678', '77777777-4778-4ed3-b6fd-09d525e59876'];
 function getHostName(hostId) {
@@ -23,7 +23,7 @@ const HISTORY_HOSTS_URI = `${METRICS_QUERY_URI}?q=type_s:history&fq=view_s:(host
 
 const SERVICE_NAMES = ['solr', 'admin-ui', 'api', 'connectors-classic', 'zookeeper', 'proxy', 'webapps', 'connectors-rpc'];
 
-http://localhost:8983/solr/system_metrics/update?_=1539125315497&commitWithin=1000&overwrite=true&wt=json
+http://localhost:8983/solr/system_monitor/update?_=1539125315497&commitWithin=1000&overwrite=true&wt=json
 
 function onInit() {
 
@@ -179,7 +179,9 @@ function getHostRecord(nodeId, timestampIso, metricType, cpuLoad = 15.6821289062
 
 let currentIndexSize = 549869443;
 let currentProxySessions = _.random(0, 10);
+let serviceCpuMap = {};
 function getServiceRecord(serviceName, status, nodeId, timestampIso, type_s = 'latest') {
+	const currentServiceCpu = serviceCpuMap[`${serviceName}:${nodeId}`] = serviceCpuMap[`${serviceName}:${nodeId}`] || _.random(.2, .6, true);
 	const record = {
 		"jetty_version_s": "9.3.8.v20160314",
 		"solr_query_rate_l": 0,
@@ -219,7 +221,7 @@ function getServiceRecord(serviceName, status, nodeId, timestampIso, type_s = 'l
 		"jetty_request_time_max_f": 56.0,
 		"solr_errors_l": 4,
 		"jetty_responses_bytes_total_l": 2360972,
-		"java_process_cpu_load_d": 0.0042479264080453015,
+		"java_process_cpu_load_d": Math.abs(_.random(currentServiceCpu - .05, currentServiceCpu + .3, true)),
 		"solr_version_s": "7.5.0",
 		"jetty_requests_active_f": 0.0,
 		"jetty_messages_in_l": 44,
